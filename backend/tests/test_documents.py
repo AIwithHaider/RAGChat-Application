@@ -11,7 +11,8 @@ from app.models.tenant import Tenant
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+psycopg://ragchat_test:3366@localhost:5432/ragchat_test",
+    # "postgresql+psycopg://ragchat_test:3366@localhost:5432/ragchat_test",
+    "postgresql+psycopg://ragchat:ragchat@postgres:5432/ragchat",
 )
 
 test_engine = create_engine(TEST_DATABASE_URL)
@@ -105,6 +106,45 @@ def test_get_document():
     assert data["id"] == document_id
     assert data["filename"] == "get-test.pdf"
     assert data["status"] == "pending"
+
+
+def test_list_documents():
+    with TestSessionLocal() as db:
+        tenant = Tenant(name="List Documents Tenant")
+        db.add(tenant)
+        db.commit()
+        db.refresh(tenant)
+
+        tenant_id = tenant.id
+
+    first_response = client.post(
+        "/documents",
+        json={
+            "tenant_id": tenant_id,
+            "filename": "first.pdf",
+        },
+    )
+
+    second_response = client.post(
+        "/documents",
+        json={
+            "tenant_id": tenant_id,
+            "filename": "second.pdf",
+        },
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+
+    response = client.get("/documents")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) == 2
+    assert data[0]["filename"] == "first.pdf"
+    assert data[1]["filename"] == "second.pdf"
 
 
 def test_get_missing_document():

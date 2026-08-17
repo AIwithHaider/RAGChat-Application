@@ -25,3 +25,9 @@ def get_document(
     document_id: int,
 ) -> Document | None:
     return db.get(Document, document_id)
+
+
+def list_documents(
+    db: Session,
+) -> list[Document]:
+    return db.query(Document).all()

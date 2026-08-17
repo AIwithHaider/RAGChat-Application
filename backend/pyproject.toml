@@ -31,4 +31,4 @@ dev = [
 ]
 
 [tool.ruff.lint]
-ignore = ["B008"]
+ignore = ["B008", "EXE002"]

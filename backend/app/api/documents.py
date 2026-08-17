@@ -3,7 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.db.dependencies import get_db
 from app.schemas.document import DocumentCreate, DocumentResponse
-from app.services.document_service import create_document, get_document
+from app.services.document_service import (
+    create_document,
+    get_document,
+    list_documents,
+)
 
 router = APIRouter(
     prefix="/documents",
@@ -27,6 +31,16 @@ def create_document_endpoint(
     )
 
     return document
+
+
+@router.get(
+    "",
+    response_model=list[DocumentResponse],
+)
+def list_documents_endpoint(
+    db: Session = Depends(get_db),
+) -> list[DocumentResponse]:
+    return list_documents(db=db)
 
 
 @router.get(
