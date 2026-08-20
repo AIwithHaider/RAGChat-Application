@@ -1,48 +1,19 @@
-// import { useState } from 'react'
-// import './App.css'
-// import Sidebar from './components/Sidebar'
-// import Chat from './components/Chat'
-
-// function App() {
-//   const [documents, setDocuments] = useState([
-//   {
-//     id: 1,
-//     name: 'report.pdf',
-//   },
-//   {
-//     id: 2,
-//     name: 'manual.pdf',
-//   },
-// ])
-
-//   return (
-//     <div className="app">
-//       <header className="app-header">
-//         <h1>RAGChat Application</h1>
-//       </header>
-
-//       <div className="app-body">
-//         <Sidebar documents={documents} />
-//         <Chat />
-//       </div>
-//     </div>
-//   )
-// }
-
-// export default App
-
-
-
 import { useEffect, useState } from 'react'
 import './App.css'
 import Sidebar from './components/Sidebar'
 import Chat from './components/Chat'
-import { fetchDocuments } from './api/documents'
+import {
+  fetchDocuments,
+  uploadDocument,
+} from './api/documents'
 
 function App() {
   const [documents, setDocuments] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+
 
   useEffect(() => {
     async function loadDocuments() {
@@ -63,15 +34,23 @@ function App() {
     loadDocuments()
   }, [])
 
-  function handleFileSelect(file) {
-    setDocuments((currentDocuments) => [
-      ...currentDocuments,
-      {
-        id: Date.now(),
-        filename: file.name,
-      },
-    ])
+  async function handleFileSelect(file) {
+  try {
+    setIsUploading(true)
+    setUploadError(null)
+
+    await uploadDocument(file, 1)
+
+    const data = await fetchDocuments()
+    setDocuments(data)
+  } catch (err) {
+    console.error('Failed to upload document:', err)
+    setUploadError('Failed to upload document.')
+  } finally {
+    setIsUploading(false)
   }
+}
+
 
   return (
     <div className="app">
@@ -85,6 +64,8 @@ function App() {
           isLoading={isLoading}
           error={error}
           onFileSelect={handleFileSelect}
+          isUploading={isUploading}
+          uploadError={uploadError}
         />
 
         <Chat />

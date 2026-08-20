@@ -1,24 +1,27 @@
 import { useRef } from 'react'
 
-function UploadButton({ onFileSelect }) {
-  const fileInputRef = useRef(null)
+function UploadButton({ onFileSelect, isUploading }) {  const fileInputRef = useRef(null)
 
   function handleButtonClick() {
     fileInputRef.current?.click()
   }
 
   function handleFileChange(event) {
-    const file = event.target.files?.[0]
+  const file = event.target.files?.[0]
 
-    if (!file) {
-      return
-    }
-
-    onFileSelect(file)
-
-    // Allow selecting the same file again later.
-    event.target.value = ''
+  if (!file) {
+    return
   }
+
+  if (file.type !== 'application/pdf') {
+    event.target.value = ''
+    return
+  }
+
+  onFileSelect(file)
+
+  event.target.value = ''
+}
 
   return (
     <>
@@ -26,15 +29,17 @@ function UploadButton({ onFileSelect }) {
         type="button"
         className="upload-button"
         onClick={handleButtonClick}
+        disabled={isUploading}
       >
-        + Add document
+        {isUploading ? 'Uploading...' : '+ Add document'}
       </button>
 
       <input
-        ref={fileInputRef}
-        type="file"
-        onChange={handleFileChange}
-        hidden
+      ref={fileInputRef}
+      type="file"
+      accept=".pdf,application/pdf"
+      onChange={handleFileChange}
+      hidden
       />
     </>
   )

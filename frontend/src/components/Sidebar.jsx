@@ -26,8 +26,10 @@ import UploadButton from './UploadButton'
 function Sidebar({
   documents,
   isLoading,
+  isUploading,
   error,
   onFileSelect,
+  uploadError,
 }) {
     return (
     <aside className="sidebar">
@@ -42,7 +44,16 @@ function Sidebar({
         />
 
       <div className="sidebar-footer">
-        <UploadButton onFileSelect={onFileSelect} />
+        {uploadError && (
+          <p className="upload-error">
+            {uploadError}
+          </p>
+        )}
+
+        <UploadButton
+          onFileSelect={onFileSelect}
+          isUploading={isUploading}
+        />
       </div>
     </aside>
   )

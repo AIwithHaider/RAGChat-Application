@@ -167,17 +167,4 @@ Example request:
   "tenant_id": 1,
   "filename": "report.pdf"
 }
-Development Philosophy
-
-The project is intentionally developed incrementally.
-
-The development approach is:
-
-Small working implementation
-          ↓
-        Test
-          ↓
-     Understand
-          ↓
-      Improve
 

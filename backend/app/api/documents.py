@@ -1,18 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.db.dependencies import get_db
-from app.schemas.document import DocumentCreate, DocumentResponse
+from app.models.document_version import DocumentVersion
+from app.schemas.document import DocumentResponse
 from app.services.document_service import (
-    create_document,
+    create_document_record,
+    delete_document,
     get_document,
     list_documents,
 )
+from app.storage.hashing import calculate_sha256
+from app.storage.keys import build_document_storage_key
+from app.storage.local import LocalStorage
 
 router = APIRouter(
     prefix="/documents",
     tags=["documents"],
 )
+
+
+storage = LocalStorage()
 
 
 @router.post(
@@ -21,16 +37,64 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
 )
 def create_document_endpoint(
-    data: DocumentCreate,
+    tenant_id: int = Form(...),
+    file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ) -> DocumentResponse:
-    document = create_document(
+    if file.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF files are supported",
+        )
+
+    filename = file.filename
+
+    if not filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Filename is required",
+        )
+
+    file_content = file.file.read()
+
+    content_hash = calculate_sha256(file_content)
+
+    document = create_document_record(
         db=db,
-        tenant_id=data.tenant_id,
-        filename=data.filename,
+        tenant_id=tenant_id,
+        filename=filename,
     )
 
-    return document
+    storage_key = build_document_storage_key(
+        document_id=document.id,
+        version_number=1,
+        filename=filename,
+    )
+
+    try:
+        storage.save(
+            file_content=file_content,
+            storage_key=storage_key,
+        )
+
+        document_version = DocumentVersion(
+            document_id=document.id,
+            version_number=1,
+            content_hash=content_hash,
+            storage_key=storage_key,
+        )
+
+        db.add(document_version)
+        db.commit()
+
+        db.refresh(document)
+
+        return document
+
+    except Exception:
+        db.rollback()
+        storage.delete(storage_key)
+        raise
 
 
 @router.get(
@@ -63,3 +127,33 @@ def get_document_endpoint(
         )
 
     return document
+
+
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_document_endpoint(
+    document_id: int,
+    db: Session = Depends(get_db),
+) -> None:
+    storage_keys = delete_document(
+        db=db,
+        document_id=document_id,
+    )
+
+    if storage_keys is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    try:
+        for storage_key in storage_keys:
+            storage.delete(storage_key)
+
+        db.commit()
+
+    except Exception:
+        db.rollback()
+        raise
