@@ -39,3 +39,13 @@ def test_delete_removes_file(tmp_path):
     storage.delete(storage_key)
 
     assert not path.exists()
+
+
+def test_get_path(tmp_path: Path) -> None:
+    storage = LocalStorage(base_path=tmp_path)
+
+    storage_key = "documents/1/v1/test.pdf"
+
+    path = storage.get_path(storage_key)
+
+    assert path == tmp_path / storage_key

@@ -106,10 +106,7 @@ def delete_document(
         .all()
     )
 
-    storage_keys = [
-        version.storage_key
-        for version in versions
-    ]
+    storage_keys = [version.storage_key for version in versions]
 
     db.delete(document)
 

@@ -30,3 +30,6 @@ class LocalStorage:
 
         if file_path.exists():
             file_path.unlink()
+
+    def get_path(self, storage_key: str) -> Path:
+        return self.base_path / storage_key

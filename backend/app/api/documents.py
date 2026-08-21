@@ -18,6 +18,7 @@ from app.services.document_service import (
     get_document,
     list_documents,
 )
+from app.services.pdf_extraction_service import extract_text
 from app.storage.hashing import calculate_sha256
 from app.storage.keys import build_document_storage_key
 from app.storage.local import LocalStorage
@@ -77,11 +78,15 @@ def create_document_endpoint(
             storage_key=storage_key,
         )
 
+        pdf_path = storage.get_path(storage_key)
+        extracted_text = extract_text(pdf_path)
+
         document_version = DocumentVersion(
             document_id=document.id,
             version_number=1,
             content_hash=content_hash,
             storage_key=storage_key,
+            extracted_text=extracted_text,
         )
 
         db.add(document_version)

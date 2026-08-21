@@ -30,6 +30,10 @@ class DocumentVersion(Base):
 
     storage_key: Mapped[str] = mapped_column(String(500))
 
+    extracted_text: Mapped[str | None] = mapped_column(
+        nullable=True,
+    )
+
     status: Mapped[str] = mapped_column(
         String(50),
         default="pending",

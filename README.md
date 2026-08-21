@@ -168,3 +168,31 @@ Example request:
   "filename": "report.pdf"
 }
 
+
+
+
+
+### Sprint 4 — Document Upload
+
+## Goal
+
+Implement the first complete document-upload workflow for RAGChat.
+
+The initial implementation supports PDF files only.
+
+```text
+Frontend
+   ↓
+POST /documents
+   ↓
+FastAPI
+   ├── validate upload
+   ├── save file locally
+   ├── create Document
+   └── create DocumentVersion
+   ↓
+PostgreSQL + Local Storage
+   ↓
+GET /documents
+   ↓
+Frontend DocumentList

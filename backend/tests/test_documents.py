@@ -13,6 +13,7 @@ from app.models.document import Document
 from app.models.document_version import DocumentVersion
 from app.models.tenant import Tenant
 from app.services.document_service import create_document_with_version
+from tests.pdf_fixtures import create_test_pdf
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
@@ -26,6 +27,7 @@ TestSessionLocal = sessionmaker(
     autoflush=False,
     autocommit=False,
 )
+
 
 def override_get_db():
     db = TestSessionLocal()
@@ -83,8 +85,15 @@ def test_create_document_with_version():
         assert version.storage_key == "documents/1/1/report.pdf"
 
 
-def test_upload_document_persists_complete_flow():
-    file_content = b"%PDF-1.4 complete persistence test"
+def test_upload_document_persists_complete_flow(tmp_path: Path):
+    pdf_path = tmp_path / "persistence-test.pdf"
+
+    create_test_pdf(
+        pdf_path,
+        "Complete persistence test.",
+    )
+
+    file_content = pdf_path.read_bytes()
     expected_hash = hashlib.sha256(file_content).hexdigest()
 
     with TestSessionLocal() as db:
@@ -142,6 +151,8 @@ def test_upload_document_persists_complete_flow():
         assert version.storage_key == (
             f"documents/{document_id}/1/persistence-test.pdf"
         )
+        assert version.extracted_text is not None
+        assert "Complete persistence test." in version.extracted_text
 
         storage_path = Path("storage") / version.storage_key
 
@@ -150,69 +161,15 @@ def test_upload_document_persists_complete_flow():
         assert storage_path.read_bytes() == file_content
 
 
-# def test_upload_storage_failure_rolls_back_database():
-#     file_content = b"%PDF-1.4 storage failure test"
+def test_delete_document(tmp_path: Path):
+    pdf_path = tmp_path / "delete-test.pdf"
 
-#     with TestSessionLocal() as db:
-#         tenant = Tenant(name="Storage Failure Tenant")
-#         db.add(tenant)
-#         db.commit()
-#         db.refresh(tenant)
+    create_test_pdf(
+        pdf_path,
+        "Delete test.",
+    )
 
-#         tenant_id = tenant.id
-
-#     with patch(
-#         "app.api.documents.storage.save",
-#         side_effect=RuntimeError("Storage failure"),
-#     ):
-#         response = client.post(
-#             "/documents",
-#             data={
-#                 "tenant_id": str(tenant_id),
-#             },
-#             files={
-#                 "file": (
-#                     "storage-failure.pdf",
-#                     file_content,
-#                     "application/pdf",
-#                 ),
-#             },
-#         )
-
-#     assert response.status_code == 500
-
-
-#     with TestSessionLocal() as db:
-#         documents = db.query(Document).all()
-
-#         assert documents == []
-
-#         versions = db.query(DocumentVersion).all()
-
-#         assert versions == []
-
-
-# def test_upload_database_failure_deletes_stored_file():
-#     file_content = b"%PDF-1.4 database failure test"
-
-#     with TestSessionLocal() as db:
-#         tenant = Tenant(name="Database Failure Tenant")
-#         db.add(tenant)
-#         db.commit()
-#         db.refresh(tenant)
-
-#         tenant_id = tenant.id
-
-#     original_commit = TestSessionLocal
-
-#     with patch(
-#         "app.api.documents.db",
-#     ):
-#         ...
-
-
-def test_delete_document():
-    file_content = b"%PDF-1.4 delete test"
+    file_content = pdf_path.read_bytes()
 
     with TestSessionLocal() as db:
         tenant = Tenant(name="Delete Document Tenant")
@@ -304,7 +261,16 @@ def test_delete_missing_document():
     }
 
 
-def test_get_document():
+def test_get_document(tmp_path: Path):
+    pdf_path = tmp_path / "get-test.pdf"
+
+    create_test_pdf(
+        pdf_path,
+        "Get document test.",
+    )
+
+    file_content = pdf_path.read_bytes()
+
     with TestSessionLocal() as db:
         tenant = Tenant(name="Get Document Tenant")
         db.add(tenant)
@@ -319,7 +285,7 @@ def test_get_document():
             files={
                 "file": (
                     "get-test.pdf",
-                    b"%PDF-1.4 test content",
+                    file_content,
                     "application/pdf",
                 ),
             },
@@ -340,7 +306,24 @@ def test_get_document():
     assert data["status"] == "pending"
 
 
-def test_list_documents():
+def test_list_documents(tmp_path: Path):
+
+    first_pdf = tmp_path / "first.pdf"
+    second_pdf = tmp_path / "second.pdf"
+
+    create_test_pdf(
+        first_pdf,
+        "First test document.",
+    )
+
+    create_test_pdf(
+        second_pdf,
+        "Second test document.",
+    )
+
+    first_file_content = first_pdf.read_bytes()
+    second_file_content = second_pdf.read_bytes()
+
     with TestSessionLocal() as db:
         tenant = Tenant(name="List Documents Tenant")
         db.add(tenant)
@@ -357,7 +340,7 @@ def test_list_documents():
         files={
             "file": (
                 "first.pdf",
-                b"%PDF-1.4 first test document",
+                first_file_content,
                 "application/pdf",
             ),
         },
@@ -371,7 +354,7 @@ def test_list_documents():
         files={
             "file": (
                 "second.pdf",
-                b"%PDF-1.4 second test document",
+                second_file_content,
                 "application/pdf",
             ),
         },
